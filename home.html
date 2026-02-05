@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Wheeldle — Home</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .home{max-width:640px;margin:48px auto;padding:24px}
+    .levels{display:flex;gap:12px;flex-wrap:wrap}
+    .level-btn{flex:1;padding:14px 18px;border:0;background:#1f6feb;color:#fff;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;height:60px}
+  </style>
+</head>
+<body>
+  <main class="home">
+    <h1>Wheeldle</h1>
+    <p>Choose difficulty to start a new game.</p>
+    <div class="levels">
+      <a class="level-btn" href="index.html?difficulty=novice">Novice (Index 1–75)</a>
+      <a class="level-btn" href="index.html?difficulty=dedicated">Dedicated (Index 1–150)</a>
+      <a class="level-btn" href="index.html?difficulty=blademaster">Blademaster (All characters)</a>
+      <a class="level-btn" href="index.html?difficulty=beta">Beta (Random)</a>
+    </div>
+    <p style="margin-top:18px;color:rgba(230,238,246,0.8)">Data source: <code>categories.json</code></p>
+  </main>
+</body>
+</html>

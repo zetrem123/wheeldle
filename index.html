@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Wheeldle — Wordle for Characters</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main>
+    <h1>Wheeldle</h1>
+    <p id="instructions">Guess the character name (letters only). Unlimited tries.</p>
+    <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px">
+      <a href="home.html" style="color:var(--text);opacity:0.85">← Home</a>
+      <div id="difficultyLabel" style="margin-left:8px;color:rgba(230,238,246,0.9);font-weight:600"></div>
+      <div id="dailyLabel" style="margin-left:12px;color:rgba(230,238,246,0.7);font-size:14px"></div>
+    </div>
+
+    <div id="controls">
+      <label for="guessInput" class="visually-hidden">Choose character</label>
+      <input id="guessInput" list="names" placeholder="Type or select a character" autocomplete="off" />
+      <datalist id="names"></datalist>
+      <button id="submitBtn">Guess</button>
+      <button id="giveupBtn">Give Up</button>
+      <button id="shareBtn" disabled>Share</button>
+      <button id="newBtn">New Game</button>
+    </div>
+
+    <div id="grid" aria-live="polite">
+      <div class="header-row">
+        <div class="col-title">Character</div>
+        <div class="col-title">Species, Gender, Nationality</div>
+        <div class="col-title">Born</div>
+        <div class="col-title">First Appeared</div>
+        <div class="col-title">Last Appeared</div>
+        <div class="col-title">Rank, Affiliation, etc.</div>
+      </div>
+    </div>
+
+    <p id="message"></p>
+    <p id="answerReveal" class="hidden"></p>
+
+    <p id="explain">Columns shown: <strong>Character</strong>, <strong>Species, Gender, Nationality</strong>, <strong>Born</strong>, <strong>First Appeared</strong>, <strong>Last Appeared</strong>, <strong>Rank, Affiliation, etc.</strong></p>
+
+    <footer>
+      <small>Data loaded from <code>categories.json</code>. Open via a local HTTP server for best results.</small>
+    </footer>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
