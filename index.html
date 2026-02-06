@@ -3,17 +3,37 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Wheeldle — Wordle for Characters</title>
+  <title>Wheeldle of Time – the Threads of the Pattern</title>
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon_16.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon_32.png" />
   <link rel="stylesheet" href="styles.css" />
+  <script>
+    // Initialize theme from localStorage (default dark) and redirect if no difficulty
+    const currentTheme = localStorage.getItem('wheeldle-theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', currentTheme);
+    
+    // Redirect to home if no difficulty parameter
+    if (!new URLSearchParams(window.location.search).get('difficulty')) {
+      window.location.href = 'home.html';
+    }
+  </script>
 </head>
 <body>
   <main>
-    <h1>Wheeldle</h1>
-    <p id="instructions">Guess the character name (letters only). Unlimited tries.</p>
-    <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px">
-      <a href="home.html" style="color:var(--text);opacity:0.85">← Home</a>
-      <div id="difficultyLabel" style="margin-left:8px;color:rgba(230,238,246,0.9);font-weight:600"></div>
-      <div id="dailyLabel" style="margin-left:12px;color:rgba(230,238,246,0.7);font-size:14px"></div>
+    <div style="display:flex;gap:12px;align-items:center;justify-content:center;margin-bottom:16px">
+      <h1 class="site-title" style="margin:0;flex:1;text-align:center"><img src="logo.png" alt="Wheeldle" class="site-logo"></h1>
+    </div>
+
+    <div style="display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <p id="instructions" style="margin:0">Type to guess the character. (Unlimited tries.)</p>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button id="infoBtn" style="padding:6px 12px;font-size:14px">ℹ️ Info</button>
+        <a href="home.html" style="color:var(--text);opacity:0.85;white-space:nowrap">← Home</a>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+      <div id="difficultyLabel" style="color:rgba(230,238,246,0.9);font-weight:600"></div>
+      <div id="dailyLabel" style="color:rgba(230,238,246,0.7);font-size:14px"></div>
     </div>
 
     <div id="controls">
@@ -21,9 +41,8 @@
       <input id="guessInput" list="names" placeholder="Type or select a character" autocomplete="off" />
       <datalist id="names"></datalist>
       <button id="submitBtn">Guess</button>
-      <button id="giveupBtn">Give Up</button>
-      <button id="shareBtn" disabled>Share</button>
-      <button id="newBtn">New Game</button>
+      <button id="giveupBtn" class="action-btn giveup-btn">Give Up</button>
+      <button id="shareBtn" class="action-btn share-btn hidden">Share</button>
     </div>
 
     <div id="grid" aria-live="polite">
@@ -36,16 +55,19 @@
         <div class="col-title">Rank, Affiliation, etc.</div>
       </div>
     </div>
-
-    <p id="message"></p>
-    <p id="answerReveal" class="hidden"></p>
-
-    <p id="explain">Columns shown: <strong>Character</strong>, <strong>Species, Gender, Nationality</strong>, <strong>Born</strong>, <strong>First Appeared</strong>, <strong>Last Appeared</strong>, <strong>Rank, Affiliation, etc.</strong></p>
-
-    <footer>
-      <small>Data loaded from <code>categories.json</code>. Open via a local HTTP server for best results.</small>
-    </footer>
   </main>
+
+  <div class="modal-overlay" id="infoModal">
+    <div class="modal-content">
+      <button class="modal-close" id="infoModalClose">×</button>
+      <h2 style="margin-top:0">How to Play</h2>
+      <p>Try and find the character of the day! Start by guessing any character on the list, then use the hints to guess more characters until you find the right answer.</p>
+      <p>A gray tile means the answer is completely wrong, a yellow tile (with the flame of Tar Valon in the background) is partially correct, and a green tile (with the original ancient symbol of the Aes Sedai) is fully correct.</p>
+      <p>Yellow tiles might include a number at the bottom right corner. This indicates the number of correct matches. For example, if you guessed Rand, who is a Human, Male, Andoran, and there is a 2 in the corner, the correct character could be a Human, Female, Andoran or maybe a Human, Male, Shienaran.</p>
+      <p>The "Born" column shows the year in the New Era (NE) the character was born. For reference, the main books take place from NE 998 to 1000. If there is a down arrow, the correct character was born in an earlier year, and vice versa for an up arrow. If there is no arrow, the correct character's birth year is Unknown.</p>
+      <p>The Wheel will weave as the Wheel wills. 🛞</p>
+    </div>
+  </div>
 
   <script src="script.js"></script>
 </body>

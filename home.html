@@ -3,25 +3,94 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Wheeldle — Home</title>
+  <title>Wheeldle of Time – Find the Threads of the Pattern</title>
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon_16.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon_32.png" />
   <link rel="stylesheet" href="styles.css" />
   <style>
-    .home{max-width:640px;margin:48px auto;padding:24px}
-    .levels{display:flex;gap:12px;flex-wrap:wrap}
-    .level-btn{flex:1;padding:14px 18px;border:0;background:#1f6feb;color:#fff;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;height:60px}
+    .home{max-width:640px;margin:48px auto;padding:24px;position:relative}
+    .theme-toggle{display:flex;gap:8px;align-items:center;justify-content:center;margin:20px 0}
+    .theme-btn{padding:8px 14px;border:1px solid rgba(230,238,246,0.3);background:transparent;color:var(--text);cursor:pointer;border-radius:4px;font-size:14px;transition:all 0.2s}
+    .theme-btn.active{background:rgba(230,238,246,0.2);border-color:rgba(230,238,246,0.6)}
+    .theme-btn:hover{border-color:rgba(230,238,246,0.8)}
+    .levels{display:flex;flex-direction:column;gap:12px}
+    .level-btn{width:100%;padding:16px;border:1px solid white;background:#2a2a2a;color:#fff;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;height:60px}
+    .copyright{font-size:13px;color:rgba(230,238,246,0.82);margin-top:32px;line-height:1.5;text-align:center}
   </style>
 </head>
 <body>
   <main class="home">
-    <h1>Wheeldle</h1>
-    <p>Choose difficulty to start a new game.</p>
+    <h1 class="site-title"><img src="logo.png" alt="Wheeldle" class="site-logo"></h1>
+    <p id="countdown-text">New puzzles in <span id="countdown">--:--:--</span></p>
+    <p style="font-size:12px;color:rgba(230,238,246,0.7);text-align:center;margin:8px 0">Spoiler warning for all written works! (All darkfriends labeled/revealed).</p>
     <div class="levels">
-      <a class="level-btn" href="index.html?difficulty=novice">Novice (Index 1–75)</a>
-      <a class="level-btn" href="index.html?difficulty=dedicated">Dedicated (Index 1–150)</a>
-      <a class="level-btn" href="index.html?difficulty=blademaster">Blademaster (All characters)</a>
+      <a class="level-btn" href="index.html?difficulty=novice">Novice (75 Characters)</a>
+      <a class="level-btn" href="index.html?difficulty=dedicated">Dedicated (150 Characters)</a>
+      <a class="level-btn" href="index.html?difficulty=blademaster">Blademaster (250 characters)</a>
       <a class="level-btn" href="index.html?difficulty=beta">Beta (Random)</a>
     </div>
-    <p style="margin-top:18px;color:rgba(230,238,246,0.8)">Data source: <code>categories.json</code></p>
+    <div class="theme-toggle">
+      <button class="theme-btn active" data-theme="dark">🌙 Dark</button>
+      <button class="theme-btn" data-theme="light">☀️ Light</button>
+    </div>
+    <p class="contact-line">contact: wheeldleoftime@gmail.com</p>
+    <p class="copyright">The Wheel of Time, characters, names, and related indicia are trademarks and copyright of The Bandersnatch Group, LLC. Portions of the materials used are property of iWoT, Inc. This project is unaffiliated with the estate of Robert Jordan, Sony Pictures, or Amazon MGM Studios.</p>
+    <p style="font-size:12px;color:rgba(230,238,246,0.7);text-align:center;margin-top:12px;line-height:1.5">Information was taken from wot.fandom.com/wiki and edited for clarity and uniformity. This game is inspired by cosmeredle.net and the New York Time's Wordle. The creator of this website used AI for programming in data collection and creating the website structure, but created the background images, logos, and icons without AI, using Wheel of Time official art as references.</p>
+    <p style="font-size:13px;color:rgba(230,238,246,0.82);text-align:center;margin-top:12px">Version 0.9</p>
   </main>
+  <script>
+    // Initialize theme from localStorage or default to dark
+    const currentTheme = localStorage.getItem('wheeldle-theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', currentTheme);
+    
+    // Update active button
+    document.querySelectorAll('.theme-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.theme === currentTheme);
+    });
+    
+    // Theme toggle event listeners
+    document.querySelectorAll('.theme-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const theme = btn.dataset.theme;
+        localStorage.setItem('wheeldle-theme', theme);
+        document.documentElement.setAttribute('data-theme', theme);
+        document.querySelectorAll('.theme-btn').forEach(b => b.classList.toggle('active', b.dataset.theme === theme));
+      });
+    });
+
+    // Fetch server time from time.now and maintain a server-based clock for UTC-7 countdown
+    async function fetchServerTimeMs(){
+      try{
+        const res = await fetch('https://time.now/developer/api/ip');
+        const j = await res.json();
+        if(j.epoch) return Number(j.epoch) * 1000;
+        if(j.unixtime) return Number(j.unixtime) * 1000;
+        if(j.timestamp) return Number(j.timestamp) * 1000;
+        if(j.datetime){ const t = Date.parse(j.datetime); if(!Number.isNaN(t)) return t; }
+        if(j.dateTime){ const t = Date.parse(j.dateTime); if(!Number.isNaN(t)) return t; }
+      }catch(e){/*ignore*/}
+      return Date.now();
+    }
+
+    (async ()=>{
+      const serverStart = await fetchServerTimeMs();
+      const localStart = Date.now();
+      const offsetMs = 7 * 60 * 60 * 1000;
+
+      function update(){
+        const serverNow = serverStart + (Date.now() - localStart);
+        const dayNum = Math.floor((serverNow - offsetMs) / (24 * 60 * 60 * 1000));
+        const nextMidnightUtcMs = (dayNum + 1) * 24 * 60 * 60 * 1000 + offsetMs;
+        const diff = nextMidnightUtcMs - serverNow;
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const secs = Math.floor((diff % (1000 * 60)) / 1000);
+        document.getElementById('countdown').textContent = String(hours).padStart(2,'0')+':'+String(mins).padStart(2,'0')+':'+String(secs).padStart(2,'0');
+      }
+
+      update();
+      setInterval(update, 1000);
+    })();
+  </script>
 </body>
 </html>

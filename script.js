@@ -2,9 +2,8 @@ const GRID = document.getElementById('grid');
 const input = document.getElementById('guessInput');
 const datalist = document.getElementById('names');
 const submitBtn = document.getElementById('submitBtn');
-const newBtn = document.getElementById('newBtn');
-const message = document.getElementById('message');
-const answerReveal = document.getElementById('answerReveal');
+const giveupBtn = document.getElementById('giveupBtn');
+const shareBtn = document.getElementById('shareBtn');
 
 let characters = []; // array of objects with fields
 let target = null;
@@ -45,11 +44,124 @@ function buildEmptyGrid(){
   gameEnded = false;
   gaveUp = false;
   fillDatalist();
-  addNextGuessPreview();
-  const shareBtn = document.getElementById('shareBtn'); if(shareBtn) shareBtn.disabled = true;
+  // Show Give Up, hide Share
+  if(giveupBtn) giveupBtn.classList.remove('hidden');
+  if(shareBtn) shareBtn.classList.add('hidden');
 }
 
-function setMessage(txt){ message.textContent = txt; }
+// Fetch server time (time.now) and return epoch ms. Falls back to local Date.now().
+async function fetchServerTimeMs(){
+  try{
+    const res = await fetch('https://time.now/developer/api/ip');
+    const j = await res.json();
+    // try common fields
+    if(j.epoch) return Number(j.epoch) * 1000;
+    if(j.unixtime) return Number(j.unixtime) * 1000;
+    if(j.timestamp) return Number(j.timestamp) * 1000;
+    if(j.datetime) {
+      const t = Date.parse(j.datetime);
+      if(!Number.isNaN(t)) return t;
+    }
+    if(j.dateTime) {
+      const t = Date.parse(j.dateTime);
+      if(!Number.isNaN(t)) return t;
+    }
+  }catch(e){/* ignore */}
+  return Date.now();
+}
+
+function setMessage(txt){ /* Messages are hidden */ }
+
+// Get localStorage key for the current game
+function getStorageKey(){
+  return `wheeldle_${gameDifficulty}_guesses`;
+}
+
+// Get target storage key
+function getTargetStorageKey(){
+  return `wheeldle_${gameDifficulty}_target`;
+}
+
+// Get game state storage key
+function getGameStateKey(){
+  return `wheeldle_${gameDifficulty}_state`;
+}
+
+// Load guesses from localStorage (without resetting game state)
+function loadGameState(){
+  if(gameDifficulty === 'beta') return; // beta mode has no persistence
+  const targetKey = getTargetStorageKey();
+  const stateKey = getGameStateKey();
+  const guessKey = getStorageKey();
+  
+  const savedTarget = localStorage.getItem(targetKey);
+  const savedState = localStorage.getItem(stateKey);
+  const savedGuesses = localStorage.getItem(guessKey);
+  
+  // Use saved target if available
+  if(savedTarget){
+    const targetChar = JSON.parse(savedTarget);
+    const savedTarget_obj = characters.find(c=>c.Character === targetChar.Character);
+    if(savedTarget_obj){
+      target = savedTarget_obj;
+    }
+  }
+  
+  // Load saved game state
+  if(savedState){
+    const state = JSON.parse(savedState);
+    gameEnded = state.gameEnded;
+    gaveUp = state.gaveUp;
+  }
+  
+  // Load saved guesses
+  if(savedGuesses){
+    const guesses = JSON.parse(savedGuesses);
+    for(const g of guesses){
+      guessedCharacters.add(g);
+    }
+  }
+  
+  // Update UI for loaded state
+  fillDatalist();
+  
+  // Rebuild the guess history if guesses were saved
+  if(savedGuesses){
+    const guesses = JSON.parse(savedGuesses);
+    for(const charName of guesses){
+      const guessObj = characters.find(c=>c.Character.toUpperCase()===charName.toUpperCase());
+      if(guessObj){
+        renderGuessRow(guessObj);
+      }
+    }
+  }
+  
+  // Add preview row only if game is not ended
+  if(!gameEnded){
+    // remove any existing preview row (avoid duplicates) then add
+    const existingPreview = GRID.querySelector('.preview-row');
+    if(existingPreview) existingPreview.remove();
+    addNextGuessPreview();
+  } else {
+    // If game ended, show appropriate button state
+    if(giveupBtn) giveupBtn.classList.add('hidden');
+    if(shareBtn) shareBtn.classList.remove('hidden');
+  }
+}
+
+// Save guesses to localStorage
+function saveGameState(){
+  if(gameDifficulty === 'beta') return; // beta mode has no persistence
+  const guessKey = getStorageKey();
+  const targetKey = getTargetStorageKey();
+  const stateKey = getGameStateKey();
+  
+  if(target){
+    localStorage.setItem(targetKey, JSON.stringify({Character: target.Character}));
+  }
+  localStorage.setItem(guessKey, JSON.stringify(Array.from(guessedCharacters)));
+  localStorage.setItem(stateKey, JSON.stringify({gameEnded, gaveUp}));
+}
 
 function fillDatalist(){
   datalist.innerHTML = '';
@@ -86,6 +198,8 @@ function extractNumber(s){
   if(!s) return null;
   const str = String(s).toUpperCase();
   if(str.includes('AGE OF LEGENDS')) return 100;
+  // Treat variations like "Post- Shattering" or "Post Shattering" as 150
+  if(/POST[\-\s]*SHATTERING/.test(str)) return 150;
   const m = str.match(/-?\d+/);
   if(!m) return null;
   const n = parseInt(m[0],10);
@@ -137,7 +251,8 @@ function renderGuessRow(guessObj){
     const box = document.createElement('div'); box.className='box';
     const valDiv = document.createElement('div'); valDiv.className='value'; 
     // Use innerHTML with formatted text breaks instead of plain textContent
-    valDiv.innerHTML = formatTextWithBreaks(guessObj[key] || '');
+    const isChar = key === 'Character';
+    valDiv.innerHTML = formatTextWithBreaks(guessObj[key] || '', isChar);
     const cnt = document.createElement('div'); cnt.className='count hidden';
     box.appendChild(valDiv); box.appendChild(cnt);
     const res = compareColumn(guessObj[key]||'', target[key]||'', key==='Character', key);
@@ -205,15 +320,67 @@ function adjustAllTiles(){
   boxes.forEach(b=> adjustTileText(b));
 }
 
+// show a temporary toast near bottom center
+function showToast(text){
+  const t = document.createElement('div');
+  t.className = 'w-toast';
+  t.textContent = text;
+  document.body.appendChild(t);
+  // trigger show
+  requestAnimationFrame(()=> t.classList.add('show'));
+  setTimeout(()=>{
+    t.classList.remove('show');
+    t.classList.add('hide');
+    setTimeout(()=> t.remove(), 300);
+  }, 1000);
+}
+
 // Format text to break after commas and slashes for better vertical space usage
-function formatTextWithBreaks(text){
+// For Character column specifically, break on every space
+function formatTextWithBreaks(text, isCharacterColumn){
   if(!text) return '';
-  text = String(text);
-  // Replace ", " with ",<br>" to break after commas
-  text = text.replace(/,\s+/g, ',<br>');
-  // Replace " / " with "<br>/" to break before slashes
-  text = text.replace(/\s+\/\s+/g, '<br>/');
-  return text;
+  text = String(text).trim();
+  // First, always break at commas (after the comma)
+  text = text.replace(/,\s*/g, ',<br>');
+  // Break around slashes (put slash at start of new line)
+  text = text.replace(/\s*\/\s*/g, '<br>/');
+
+  if(isCharacterColumn){
+    // For Character column, put each word on its own line
+    text = text.replace(/\s+/g, '<br>');
+  }
+
+  // Now split into logical lines and enforce max width per line
+  const maxLen = 13;
+  const parts = text.split(/<br>/);
+  const out = [];
+  for(let part of parts){
+    part = part.trim();
+    if(part.length === 0){ out.push(''); continue; }
+    if(part.length <= maxLen){ out.push(part); continue; }
+
+    // If this segment is too long, try to break at spaces within it
+    let remaining = part;
+    while(remaining.length > 0){
+      if(remaining.length <= maxLen){ out.push(remaining); break; }
+      // look for a space at or before maxLen
+      let idx = remaining.lastIndexOf(' ', maxLen);
+      if(idx === -1){
+        // fallback: find the first space after maxLen
+        idx = remaining.indexOf(' ', maxLen);
+      }
+      if(idx === -1){
+        // final fallback: hard break
+        out.push(remaining.slice(0, maxLen));
+        remaining = remaining.slice(maxLen).trim();
+      } else {
+        out.push(remaining.slice(0, idx));
+        remaining = remaining.slice(idx + 1).trim();
+      }
+    }
+  }
+
+  return out.join('<br>');
 }
 
 // Add semi-transparent backdrops to prominent text elements that lack a background
@@ -222,6 +389,7 @@ function applyTextBackdrops(){
 }
 
 function onSubmit(){
+  if(gameEnded) return; // Prevent further guesses when game is over
   const val = input.value.trim();
   if(!val){ setMessage('Select a character from the dropdown.'); return; }
   const guessObj = characters.find(c=>c.Character.toUpperCase()===val.toUpperCase());
@@ -239,20 +407,24 @@ function onSubmit(){
   guessedCharacters.add(guessObj.Character.toUpperCase());
   renderGuessRow(guessObj);
   fillDatalist();
+  saveGameState();
 
   // check win if name matches exactly
   if(cleanNameLetters(guessObj.Character) === cleanNameLetters(target.Character)){
     setMessage(`You found the character: ${target.Character}`);
     submitBtn.disabled = true;
+    input.disabled = true;
     gameEnded = true;
     gaveUp = false;
     // Remove the preview row
     const previewRow = GRID.querySelector('.preview-row');
     if(previewRow) previewRow.remove();
     input.value = '';
+    // Update button visibility: hide Give Up, show Share
+    if(giveupBtn) giveupBtn.classList.add('hidden');
+    if(shareBtn) shareBtn.classList.remove('hidden');
+    saveGameState();
     input.focus();
-    // enable share button
-    const shareBtn = document.getElementById('shareBtn'); if(shareBtn) shareBtn.disabled = false;
     return;
   }
   currentGuess++;
@@ -266,7 +438,9 @@ function onSubmit(){
 }
 
 function newGame(){
-  currentGuess = 0; setMessage(''); answerReveal.classList.add('hidden'); answerReveal.textContent=''; submitBtn.disabled=false; input.value='';
+  currentGuess = 0; setMessage(''); submitBtn.disabled=false; input.disabled=false; input.value='';
+  if(giveupBtn) giveupBtn.classList.remove('hidden');
+  if(shareBtn) shareBtn.classList.add('hidden');
   buildEmptyGrid();
   if(characters.length>0){ pickTarget(); setMessage(`New game started.`); addNextGuessPreview(); }
 }
@@ -276,6 +450,7 @@ function giveUp(){
   gameEnded = true;
   gaveUp = true;
   submitBtn.disabled = true;
+  input.disabled = true;
   
   // Render target as all-green row (correct answer)
   const cols = ['Character','Species, Gender, Nationality','Born','First Appeared','Last Appeared','Rank, Affiliation, etc.'];
@@ -286,7 +461,8 @@ function giveUp(){
     const box = document.createElement('div'); box.className='box green';
     const val = document.createElement('div'); val.className='value'; 
     // Use innerHTML with formatted text breaks
-    val.innerHTML = formatTextWithBreaks(target[key] || '');
+    const isChar = key === 'Character';
+    val.innerHTML = formatTextWithBreaks(target[key] || '', isChar);
     box.appendChild(val);
     row.appendChild(box);
     rowResult.push('green');
@@ -301,12 +477,13 @@ function giveUp(){
   const previewRow = GRID.querySelector('.preview-row');
   if(previewRow) previewRow.remove();
   
-  answerReveal.classList.remove('hidden');
-  answerReveal.textContent = `Answer: ${target.Character}`;
   setMessage('You gave up.');
   
-  // enable share button
-  const shareBtn = document.getElementById('shareBtn'); if(shareBtn) shareBtn.disabled = false;
+  // Update button visibility: hide Give Up, show Share
+  if(giveupBtn) giveupBtn.classList.add('hidden');
+  if(shareBtn) shareBtn.classList.remove('hidden');
+  saveGameState();
+  
   // adjust text size for the revealed answer row
   requestAnimationFrame(()=>{
     const boxes = row.querySelectorAll('.box');
@@ -374,9 +551,10 @@ async function init(){
     // Select target character based on difficulty and seed
     isDailyMode = diff !== 'beta';
     if(isDailyMode){
-      const today = new Date();
-      const dayNum = Math.floor(today.getTime() / (1000 * 60 * 60 * 24));
-      const seedIdx = dayNum % 750;
+      const serverTs = await fetchServerTimeMs(); // epoch ms
+      const offsetMs = 7 * 60 * 60 * 1000; // 7 hours in ms
+      const dayNum = Math.floor((serverTs - offsetMs) / (24 * 60 * 60 * 1000));
+      const seedIdx = ((dayNum % 750) + 750) % 750;
       const seedModeKey = diff.charAt(0).toUpperCase() + diff.slice(1);
       const seedMode = seedData[seedModeKey] || {};
       const charIndex = parseInt(seedMode[seedIdx], 10);
@@ -385,10 +563,10 @@ async function init(){
       }
     }
 
-    // populate datalist
-    fillDatalist();
-    buildEmptyGrid();
+    // populate datalist and initialize grid
     if(!target) pickTarget();
+    buildEmptyGrid();
+    loadGameState();
     const label = document.getElementById('difficultyLabel');
     if(label) label.textContent = `Difficulty: ${diff.charAt(0).toUpperCase()+diff.slice(1)} (${characters.length} characters)`;
     const dailyLabel = document.getElementById('dailyLabel');
@@ -412,12 +590,9 @@ input.addEventListener('keydown', e=>{
     onSubmit();
   }
 });
-newBtn.addEventListener('click', newGame);
-const giveupBtn = document.getElementById('giveupBtn');
 if(giveupBtn) giveupBtn.addEventListener('click', giveUp);
 
 // Share button: copies formatted result to clipboard (enabled only after solving)
-const shareBtn = document.getElementById('shareBtn');
 if(shareBtn){
   shareBtn.addEventListener('click', async ()=>{
     if(shareBtn.disabled) return;
@@ -441,14 +616,35 @@ if(shareBtn){
         lines.push(em);
       }
     }
-    lines.push('try at wheeldle.com');
+    lines.push('Try at wheeldle.com');
     const text = lines.join('\n');
     try{
       await navigator.clipboard.writeText(text);
-      setMessage('Result copied to clipboard.');
+      showToast('Copied to clipboard.');
     }catch(e){
       console.error('Copy failed', e);
-      setMessage('Failed to copy to clipboard.');
+      showToast('Copy failed');
+    }
+  });
+}
+
+// Info modal event listeners
+const infoBtn = document.getElementById('infoBtn');
+const infoModal = document.getElementById('infoModal');
+const infoModalClose = document.getElementById('infoModalClose');
+
+if(infoBtn && infoModal && infoModalClose){
+  infoBtn.addEventListener('click', ()=>{
+    infoModal.classList.add('show');
+  });
+  
+  infoModalClose.addEventListener('click', ()=>{
+    infoModal.classList.remove('show');
+  });
+  
+  infoModal.addEventListener('click', (e)=>{
+    if(e.target === infoModal){
+      infoModal.classList.remove('show');
     }
   });
 }
