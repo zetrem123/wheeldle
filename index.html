@@ -20,20 +20,20 @@
 </head>
 <body>
   <main>
-    <div style="display:flex;gap:12px;align-items:center;justify-content:center;margin-bottom:16px">
+    <div style="display:flex;gap:clamp(8px,3vw,12px);align-items:center;justify-content:center;margin-bottom:clamp(12px,3vw,16px)">
       <h1 class="site-title" style="margin:0;flex:1;text-align:center"><img src="logo.png" alt="Wheeldle" class="site-logo"></h1>
     </div>
 
-    <div style="display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:8px">
-      <p id="instructions" style="margin:0">Type to guess the character. (Unlimited tries.)</p>
-      <div style="display:flex;gap:8px;align-items:center">
-        <button id="infoBtn" style="padding:6px 12px;font-size:14px">ℹ️ Info</button>
-        <a href="home.html" style="color:var(--text);opacity:0.85;white-space:nowrap">← Home</a>
+    <div style="display:flex;flex-wrap:wrap;gap:clamp(8px,3vw,12px);align-items:center;justify-content:space-between;margin-bottom:clamp(6px,2vw,8px)">
+      <p id="instructions" style="margin:0;flex:1;min-width:200px;font-size:clamp(13px,3vw,15px)">Type to guess the character. (Unlimited tries.)</p>
+      <div style="display:flex;gap:clamp(6px,2vw,8px);align-items:center;flex-wrap:wrap">
+        <button id="infoBtn" style="padding:clamp(6px,1.5vw,8px) clamp(10px,2vw,12px);font-size:clamp(12px,2.5vw,14px);border-radius:4px">ℹ️ Info</button>
+        <a href="home.html" style="color:var(--text);opacity:0.85;white-space:nowrap;font-size:clamp(13px,3vw,15px)">← Home</a>
       </div>
     </div>
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-      <div id="difficultyLabel" style="color:rgba(230,238,246,0.9);font-weight:600"></div>
-      <div id="dailyLabel" style="color:rgba(230,238,246,0.7);font-size:14px"></div>
+    <div style="display:flex;gap:clamp(6px,2vw,8px);align-items:center;margin-bottom:clamp(6px,2vw,8px);flex-wrap:wrap">
+      <div id="difficultyLabel" style="color:rgba(230,238,246,0.9);font-weight:600;font-size:clamp(12px,2.5vw,14px)"></div>
+      <div id="dailyLabel" style="color:rgba(230,238,246,0.7);font-size:clamp(12px,2.5vw,14px)"></div>
     </div>
 
     <div id="controls">

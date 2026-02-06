@@ -8,14 +8,14 @@
   <link rel="icon" type="image/png" sizes="32x32" href="favicon_32.png" />
   <link rel="stylesheet" href="styles.css" />
   <style>
-    .home{max-width:640px;margin:48px auto;padding:24px;position:relative}
-    .theme-toggle{display:flex;gap:8px;align-items:center;justify-content:center;margin:20px 0}
-    .theme-btn{padding:8px 14px;border:1px solid rgba(230,238,246,0.3);background:transparent;color:var(--text);cursor:pointer;border-radius:4px;font-size:14px;transition:all 0.2s}
+    .home{max-width:640px;margin:clamp(24px,8vw,48px) auto;padding:clamp(16px,5vw,24px);position:relative}
+    .theme-toggle{display:flex;gap:clamp(6px,2vw,8px);align-items:center;justify-content:center;margin:clamp(16px,5vw,20px) 0;flex-wrap:wrap}
+    .theme-btn{padding:clamp(6px,2vw,8px) clamp(10px,2vw,14px);border:1px solid rgba(230,238,246,0.3);background:transparent;color:var(--text);cursor:pointer;border-radius:4px;font-size:clamp(12px,2.5vw,14px);transition:all 0.2s}
     .theme-btn.active{background:rgba(230,238,246,0.2);border-color:rgba(230,238,246,0.6)}
     .theme-btn:hover{border-color:rgba(230,238,246,0.8)}
-    .levels{display:flex;flex-direction:column;gap:12px}
-    .level-btn{width:100%;padding:16px;border:1px solid white;background:#2a2a2a;color:#fff;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;height:60px}
-    .copyright{font-size:13px;color:rgba(230,238,246,0.82);margin-top:32px;line-height:1.5;text-align:center}
+    .levels{display:flex;flex-direction:column;gap:clamp(10px,3vw,12px)}
+    .level-btn{width:100%;padding:clamp(12px,3vw,16px);border:1px solid white;background:#2a2a2a;color:#fff;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;height:clamp(50px,12vw,60px);font-size:clamp(13px,3vw,16px)}
+    .copyright{font-size:clamp(11px,2.5vw,13px);color:rgba(230,238,246,0.82);margin-top:clamp(24px,5vw,32px);line-height:1.5;text-align:center}
   </style>
 </head>
 <body>
