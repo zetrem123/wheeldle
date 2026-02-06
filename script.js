@@ -1,6 +1,7 @@
 const GRID = document.getElementById('grid');
 const input = document.getElementById('guessInput');
 const datalist = document.getElementById('names');
+let nameDropdown = document.getElementById('nameDropdown');
 const submitBtn = document.getElementById('submitBtn');
 const giveupBtn = document.getElementById('giveupBtn');
 const shareBtn = document.getElementById('shareBtn');
@@ -15,6 +16,7 @@ let seedData = {};
 let guessedCharacters = new Set(); // track already-guessed character names
 let gameEnded = false; // true when user wins or gives up
 let gaveUp = false; // true if gave up; false if won
+let currentSeedIdx = null; // current daily seed index (or null for beta/random)
 
 function cleanNameLetters(s){ return String(s||'').toUpperCase().replace(/[^A-Z]/g,''); }
 function normalizeToken(t){ return String(t||'').replace(/\[.*?\]/g,'').trim().toUpperCase(); }
@@ -97,6 +99,36 @@ function loadGameState(){
   const savedTarget = localStorage.getItem(targetKey);
   const savedState = localStorage.getItem(stateKey);
   const savedGuesses = localStorage.getItem(guessKey);
+
+  // If there's a saved state, check whether it belongs to the same seed/day.
+  // Older saves may not include seedIdx; in that case fall back to target comparison.
+  if(savedState){
+    try{
+      const parsedState = JSON.parse(savedState);
+      if(parsedState && typeof parsedState === 'object'){
+        if('seedIdx' in parsedState){
+          // mismatch -> clear saved data for this difficulty
+          if(parsedState.seedIdx !== currentSeedIdx){
+            localStorage.removeItem(guessKey);
+            localStorage.removeItem(stateKey);
+            localStorage.removeItem(targetKey);
+            return;
+          }
+        } else if(savedTarget){
+          try{
+            const parsedTarget = JSON.parse(savedTarget);
+            if(parsedTarget && parsedTarget.Character && target && parsedTarget.Character !== target.Character){
+              // saved target differs from today's target -> clear stale saves
+              localStorage.removeItem(guessKey);
+              localStorage.removeItem(stateKey);
+              localStorage.removeItem(targetKey);
+              return;
+            }
+          }catch(e){/*ignore*/}
+        }
+      }
+    }catch(e){/*ignore parse errors - proceed to load normally*/}
+  }
   
   // Use saved target if available
   if(savedTarget){
@@ -160,7 +192,10 @@ function saveGameState(){
     localStorage.setItem(targetKey, JSON.stringify({Character: target.Character}));
   }
   localStorage.setItem(guessKey, JSON.stringify(Array.from(guessedCharacters)));
-  localStorage.setItem(stateKey, JSON.stringify({gameEnded, gaveUp}));
+  // store seedIdx with state for robust daily rollover detection
+  const stateObj = {gameEnded, gaveUp};
+  if(currentSeedIdx !== null) stateObj.seedIdx = currentSeedIdx;
+  localStorage.setItem(stateKey, JSON.stringify(stateObj));
 }
 
 function fillDatalist(){
@@ -170,6 +205,97 @@ function fillDatalist(){
     if(guessedCharacters.has(ch.Character.toUpperCase())) continue;
     const opt = document.createElement('option'); opt.value = ch.Character; datalist.appendChild(opt);
   }
+  // also refresh dropdown contents if present
+  refreshDropdownItems();
+}
+
+function availableNames(){
+  return characters.map(c=>c.Character).filter(n=>!guessedCharacters.has(n.toUpperCase())).sort((a,b)=>a.localeCompare(b));
+}
+
+function refreshDropdownItems(){
+  if(!nameDropdown) return;
+  // If dropdown currently visible, re-filter with current input value, otherwise keep hidden
+  if(nameDropdown.classList.contains('hidden')) return;
+  const q = (input.value||'').trim().toLowerCase();
+  populateDropdown(q);
+}
+
+function populateDropdown(query){
+  if(!nameDropdown) return;
+  nameDropdown.innerHTML = '';
+  const header = document.createElement('div'); header.className='header';
+  const all = availableNames();
+  const filtered = all.filter(n=> n.toLowerCase().includes(query));
+  if(filtered.length >= 2) header.textContent = 'Begin typing a name.';
+  else if(filtered.length === 1) header.textContent = 'Press enter to submit guess.';
+  else header.textContent = 'No results found.';
+  nameDropdown.appendChild(header);
+
+  const list = document.createElement('div'); list.className='list';
+  if(filtered.length === 0){
+    const no = document.createElement('div'); no.className='no-results'; no.textContent = 'No results found.'; list.appendChild(no);
+  } else {
+    for(const n of filtered){
+      const it = document.createElement('div'); it.className='item'; it.textContent = n;
+      it.addEventListener('mousedown', (e)=>{
+        // pick this name and submit
+        e.preventDefault();
+        input.value = n;
+        hideDropdown();
+        setTimeout(()=> onSubmit(), 0);
+      });
+      list.appendChild(it);
+    }
+  }
+  nameDropdown.appendChild(list);
+  nameDropdown.setAttribute('aria-expanded', 'true');
+}
+
+function moveDropdownToBody(){
+  // Move dropdown div from #controls to body (escape stacking context)
+  if(!nameDropdown) return;
+  if(nameDropdown.parentElement !== document.body){
+    document.body.appendChild(nameDropdown);
+  }
+}
+
+function positionDropdown(){
+  if(!nameDropdown || nameDropdown.classList.contains('hidden')) return;
+  // position using viewport coordinates (like the toast)
+  const rect = input.getBoundingClientRect();
+  nameDropdown.style.position = 'fixed';
+  nameDropdown.style.left = rect.left + 'px';
+  nameDropdown.style.top = (rect.bottom + 8) + 'px';
+  nameDropdown.style.width = rect.width + 'px';
+}
+
+function showDropdown(){
+  if(!nameDropdown) return;
+  // Move dropdown to body to escape #controls stacking context
+  moveDropdownToBody();
+  // ensure tile size var is available
+  updateTileSizeVar();
+  nameDropdown.classList.remove('hidden');
+  populateDropdown((input.value||'').trim().toLowerCase());
+  // set list max height to 2.5 tiles
+  const listEl = nameDropdown.querySelector('.list');
+  if(listEl){ listEl.style.maxHeight = 'calc(var(--tile-size,48px) * 2.5)'; }
+  // position dropdown using viewport coordinates
+  positionDropdown();
+}
+
+function hideDropdown(){
+  if(!nameDropdown) return;
+  nameDropdown.classList.add('hidden');
+  nameDropdown.setAttribute('aria-expanded', 'false');
+}
+
+function updateTileSizeVar(){
+  // determine current tile size from any .box element and set CSS var
+  const anyBox = document.querySelector('.box');
+  const size = anyBox ? anyBox.clientWidth : 48;
+  document.documentElement.style.setProperty('--tile-size', size + 'px');
 }
 
 function pickTarget(){ target = characters[Math.floor(Math.random()*characters.length)]; }
@@ -318,6 +444,8 @@ function adjustTileText(box){
 function adjustAllTiles(){
   const boxes = document.querySelectorAll('.box');
   boxes.forEach(b=> adjustTileText(b));
+  // update CSS var for tile size so dropdown can size itself correctly
+  updateTileSizeVar();
 }
 
 // show a temporary toast near bottom center
@@ -555,6 +683,8 @@ async function init(){
       const offsetMs = 7 * 60 * 60 * 1000; // 7 hours in ms
       const dayNum = Math.floor((serverTs - offsetMs) / (24 * 60 * 60 * 1000));
       const seedIdx = ((dayNum % 750) + 750) % 750;
+      // record current daily seed index for persistence checks
+      currentSeedIdx = seedIdx;
       const seedModeKey = diff.charAt(0).toUpperCase() + diff.slice(1);
       const seedMode = seedData[seedModeKey] || {};
       const charIndex = parseInt(seedMode[seedIdx], 10);
@@ -562,11 +692,15 @@ async function init(){
         target = characters.find(c=>parseInt(c.Index,10) === charIndex);
       }
     }
+    else {
+      currentSeedIdx = null;
+    }
 
     // populate datalist and initialize grid
     if(!target) pickTarget();
     buildEmptyGrid();
     loadGameState();
+    moveDropdownToBody();
     const label = document.getElementById('difficultyLabel');
     if(label) label.textContent = `Difficulty: ${diff.charAt(0).toUpperCase()+diff.slice(1)} (${characters.length} characters)`;
     const dailyLabel = document.getElementById('dailyLabel');
@@ -581,14 +715,45 @@ async function init(){
 submitBtn.addEventListener('click', onSubmit);
 input.addEventListener('keydown', e=>{
   if(e.key==='Enter'){
+    // If dropdown open, use its semantics
+    if(nameDropdown && !nameDropdown.classList.contains('hidden')){
+      const list = nameDropdown.querySelectorAll('.item');
+      if(list.length === 1){
+        // auto-select the only remaining result
+        const only = list[0].textContent;
+        input.value = only;
+        hideDropdown();
+        onSubmit();
+        e.preventDefault();
+        return;
+      } else {
+        // otherwise just close the dropdown
+        hideDropdown();
+        e.preventDefault();
+        return;
+      }
+    }
+    // fallback to previous behavior when dropdown is not visible
     const val = input.value.trim().toLowerCase();
     if(val.length>0){
-      // find characters that start with the input (case-insensitive) or equal
       const matches = characters.filter(c=>c.Character.toLowerCase().startsWith(val));
-      if(matches.length===1){ input.value = matches[0].Character; onSubmit(); return; }
+      if(matches.length===1){ input.value = matches[0].Character; onSubmit(); e.preventDefault(); return; }
     }
     onSubmit();
   }
+});
+// open dropdown when input focused
+input.addEventListener('focus', ()=>{ showDropdown(); });
+// also open dropdown on click (even if already focused)
+input.addEventListener('click', ()=>{ if(nameDropdown && nameDropdown.classList.contains('hidden')) showDropdown(); });
+// reopen dropdown when user types
+input.addEventListener('input', ()=>{ showDropdown(); populateDropdown((input.value||'').trim().toLowerCase()); });
+// click outside hides dropdown
+document.addEventListener('click', (e)=>{
+  if(!nameDropdown) return;
+  if(e.target === input) return;
+  if(nameDropdown.contains(e.target)) return;
+  hideDropdown();
 });
 if(giveupBtn) giveupBtn.addEventListener('click', giveUp);
 
@@ -651,10 +816,16 @@ if(infoBtn && infoModal && infoModalClose){
 
 init();
 
-// adjust tiles on window resize
+// adjust tiles on window resize and reposition dropdown
 window.addEventListener('resize', ()=>{
   requestAnimationFrame(adjustAllTiles);
+  requestAnimationFrame(positionDropdown);
 });
+
+// update dropdown position on scroll (since it uses position:fixed)
+window.addEventListener('scroll', ()=>{
+  requestAnimationFrame(positionDropdown);
+}, {passive: true});
 
 // apply backdrops after initial render and whenever grid changes
 document.addEventListener('DOMContentLoaded', ()=>{

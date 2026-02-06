@@ -38,7 +38,8 @@
 
     <div id="controls">
       <label for="guessInput" class="visually-hidden">Choose character</label>
-      <input id="guessInput" list="names" placeholder="Type or select a character" autocomplete="off" />
+      <input id="guessInput" placeholder="Type or select a character" autocomplete="off" />
+      <div id="nameDropdown" class="name-dropdown hidden" aria-expanded="false"></div>
       <datalist id="names"></datalist>
       <button id="submitBtn">Guess</button>
       <button id="giveupBtn" class="action-btn giveup-btn">Give Up</button>
