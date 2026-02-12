@@ -38,12 +38,17 @@
 
     <div id="controls">
       <label for="guessInput" class="visually-hidden">Choose character</label>
-      <input id="guessInput" placeholder="Type or select a character" autocomplete="off" />
+      <div class="control-row">
+        <input id="guessInput" placeholder="Type or select a character" autocomplete="off" />
+        <button id="submitBtn">Guess</button>
+      </div>
       <div id="nameDropdown" class="name-dropdown hidden" aria-expanded="false"></div>
       <datalist id="names"></datalist>
-      <button id="submitBtn">Guess</button>
-      <button id="giveupBtn" class="action-btn giveup-btn">Give Up</button>
-      <button id="shareBtn" class="action-btn share-btn hidden">Share</button>
+      <div class="giveup-row">
+        <span id="giveupConfirmText" class="confirm-text hidden">Are you sure?</span>
+        <button id="giveupBtn" class="action-btn giveup-btn">Give Up</button>
+        <button id="shareBtn" class="action-btn share-btn hidden">Share</button>
+      </div>
     </div>
 
     <div id="grid" aria-live="polite">

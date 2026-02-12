@@ -5,6 +5,10 @@ let nameDropdown = document.getElementById('nameDropdown');
 const submitBtn = document.getElementById('submitBtn');
 const giveupBtn = document.getElementById('giveupBtn');
 const shareBtn = document.getElementById('shareBtn');
+const giveupConfirmText = document.getElementById('giveupConfirmText');
+
+// Confirm state for Give Up flow
+let giveUpConfirmActive = false;
 
 let characters = []; // array of objects with fields
 let target = null;
@@ -701,6 +705,15 @@ async function init(){
     buildEmptyGrid();
     loadGameState();
     moveDropdownToBody();
+    // Ensure the next-guess preview row is present on initial load (even in beta/random mode)
+    if(!gameEnded){
+      const existingPreview = GRID.querySelector('.preview-row');
+      if(existingPreview) {
+        // leave it
+      } else {
+        addNextGuessPreview();
+      }
+    }
     const label = document.getElementById('difficultyLabel');
     if(label) label.textContent = `Difficulty: ${diff.charAt(0).toUpperCase()+diff.slice(1)} (${characters.length} characters)`;
     const dailyLabel = document.getElementById('dailyLabel');
@@ -750,12 +763,47 @@ input.addEventListener('click', ()=>{ if(nameDropdown && nameDropdown.classList.
 input.addEventListener('input', ()=>{ showDropdown(); populateDropdown((input.value||'').trim().toLowerCase()); });
 // click outside hides dropdown
 document.addEventListener('click', (e)=>{
-  if(!nameDropdown) return;
-  if(e.target === input) return;
-  if(nameDropdown.contains(e.target)) return;
-  hideDropdown();
+  // Dropdown handling
+  if(nameDropdown){
+    if(e.target === input) {
+      // clicking input should not close dropdown
+    } else if(nameDropdown.contains(e.target)){
+      // clicking inside dropdown
+    } else {
+      hideDropdown();
+    }
+  }
+  // If Give Up confirm is active and user clicked anywhere other than the Give Up button, reset it
+  if(giveUpConfirmActive){
+    if(e.target === giveupBtn) return; // allow the button handler to run
+    resetGiveupConfirm();
+  }
 });
-if(giveupBtn) giveupBtn.addEventListener('click', giveUp);
+
+if(giveupBtn) giveupBtn.addEventListener('click', (e)=>{
+  // If confirmation already active and user clicked the button again, treat as confirm
+  if(giveUpConfirmActive){
+    // proceed with give up
+    resetGiveupConfirm();
+    giveUp();
+    return;
+  }
+  // Activate confirmation UI
+  e.stopPropagation(); // prevent document click from immediately resetting
+  activateGiveupConfirm();
+});
+
+function activateGiveupConfirm(){
+  giveUpConfirmActive = true;
+  if(giveupConfirmText) giveupConfirmText.classList.remove('hidden');
+  if(giveupBtn) giveupBtn.textContent = 'Confirm.';
+}
+
+function resetGiveupConfirm(){
+  giveUpConfirmActive = false;
+  if(giveupConfirmText) giveupConfirmText.classList.add('hidden');
+  if(giveupBtn) giveupBtn.textContent = 'Give Up';
+}
 
 // Share button: copies formatted result to clipboard (enabled only after solving)
 if(shareBtn){
